@@ -1,0 +1,705 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TemTextures</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@400;500;600;700;800&family=Manrope:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --void:#07040d;
+    --panel:#130c26;
+    --panel-2:#190f30;
+    --purple-deep:#5b21b6;
+    --purple-mid:#8b5cf6;
+    --purple-bright:#b39bff;
+    --blue-light:#7dd3fc;
+    --blue-pale:#bae6fd;
+    --steel:#e7e1fb;
+    --text-main:#f3eeff;
+    --text-muted:#a99cd1;
+    --line:rgba(179,155,255,0.16);
+    --grad-brand: linear-gradient(120deg, var(--purple-deep), var(--purple-mid) 45%, var(--blue-light));
+  }
+
+  *{margin:0;padding:0;box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{
+    background:var(--void); color:var(--text-main);
+    font-family:'Manrope', sans-serif; overflow-x:hidden;
+  }
+  body.locked{overflow:hidden; height:100vh;}
+  ::selection{background:var(--purple-mid); color:#07040d;}
+  h1,h2,h3,.display{ font-family:'Unbounded', sans-serif; }
+  .mono{ font-family:'JetBrains Mono', monospace; letter-spacing:0.02em; }
+  a{ color:inherit; text-decoration:none; }
+  img{ max-width:100%; display:block; }
+
+  /* ============ GRAIN OVERLAY ============ */
+  .grain{
+    position:fixed; inset:0; z-index:900; pointer-events:none; opacity:0.05; mix-blend-mode:overlay;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  }
+
+  /* ============ CURSOR GLOW ============ */
+  .cursor-glow{
+    position:fixed; top:0; left:0; width:420px; height:420px; border-radius:50%;
+    background:radial-gradient(circle, rgba(139,92,246,0.22), transparent 70%);
+    pointer-events:none; z-index:1; mix-blend-mode:screen;
+    transform:translate(-50%,-50%); will-change:transform; opacity:0;
+    transition:opacity 0.4s ease;
+  }
+
+  /* ============ SCROLL PROGRESS ============ */
+  #progress{
+    position:fixed; top:0; left:0; height:3px; width:0%;
+    background:var(--grad-brand); z-index:2000;
+    box-shadow:0 0 12px rgba(139,92,246,0.7);
+  }
+
+  /* ============ BACKGROUND ATMOSPHERE ============ */
+  .bg-glow{ position:fixed; inset:0; z-index:0; pointer-events:none; overflow:hidden; }
+  .bg-glow span{ position:absolute; border-radius:50%; filter:blur(130px); animation:drift 26s ease-in-out infinite alternate; }
+  .bg-glow span:nth-child(1){ width:560px; height:560px; background:var(--purple-mid); opacity:0.3; top:-180px; left:-140px; }
+  .bg-glow span:nth-child(2){ width:480px; height:480px; background:var(--blue-light); opacity:0.18; bottom:-160px; right:-120px; animation-delay:-8s; }
+  .bg-glow span:nth-child(3){ width:420px; height:420px; background:var(--purple-deep); opacity:0.2; top:45%; left:50%; animation-delay:-16s; }
+  @keyframes drift{ from{ transform:translate(0,0) scale(1);} to{ transform:translate(60px,40px) scale(1.15);} }
+
+  .noise-grid{
+    position:fixed; inset:0; z-index:0; pointer-events:none; opacity:0.3;
+    background-image:linear-gradient(var(--line) 1px, transparent 1px), linear-gradient(90deg, var(--line) 1px, transparent 1px);
+    background-size:56px 56px;
+    mask-image:radial-gradient(circle at 50% 0%, black, transparent 75%);
+  }
+
+  /* ============ BLADE DIVIDERS ============ */
+  .cut{ position:relative; z-index:1; height:46px; overflow:hidden; }
+  .cut svg{ width:100%; height:100%; display:block; }
+  .cut.flip svg{ transform:scaleX(-1); }
+
+  /* ============ INTRO ============ */
+  #intro{
+    position:fixed; inset:0; z-index:1000;
+    background:radial-gradient(circle at 30% 20%, rgba(139,92,246,0.35), transparent 60%),
+      radial-gradient(circle at 75% 80%, rgba(125,211,252,0.25), transparent 55%), var(--void);
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    cursor:pointer; transition:opacity 0.9s ease, visibility 0.9s ease;
+  }
+  #intro.hide{ opacity:0; visibility:hidden; }
+  .intro-grid{
+    position:absolute; inset:0;
+    background-image:linear-gradient(var(--line) 1px, transparent 1px), linear-gradient(90deg, var(--line) 1px, transparent 1px);
+    background-size:48px 48px; mask-image:radial-gradient(circle at 50% 45%, black, transparent 70%); opacity:0.5;
+  }
+  .intro-shape{
+    position:absolute; width:24px; height:24px; background:var(--grad-brand);
+    clip-path:polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%);
+    opacity:0; animation:floatIn 1s ease forwards, floaty 6s ease-in-out infinite;
+    filter:drop-shadow(0 0 10px rgba(139,92,246,0.6));
+  }
+  @keyframes floatIn{ to{ opacity:0.85; } }
+  @keyframes floaty{ 0%,100%{ transform:translateY(0);} 50%{ transform:translateY(-18px);} }
+  .intro-title{ display:flex; font-size:clamp(2.6rem, 9vw, 6.5rem); font-weight:800; letter-spacing:0.02em; position:relative; z-index:2; }
+  .intro-title span{
+    display:inline-block; opacity:0; transform:translateY(40px) scale(0.85);
+    background:var(--grad-brand); -webkit-background-clip:text; background-clip:text; color:transparent;
+    animation:letterIn 0.7s cubic-bezier(.2,.8,.2,1) forwards;
+  }
+  @keyframes letterIn{ to{ opacity:1; transform:translateY(0) scale(1); } }
+  .intro-sweep{
+    position:absolute; top:0; left:-40%; width:40%; height:100%;
+    background:linear-gradient(100deg, transparent, rgba(255,255,255,0.16), transparent);
+    animation:sweep 2.6s ease-in-out 0.4s forwards; z-index:3; pointer-events:none;
+  }
+  @keyframes sweep{ to{ left:120%; } }
+  .intro-sub{
+    margin-top:1.4rem; color:var(--text-muted); font-size:0.85rem; letter-spacing:0.35em; text-transform:uppercase;
+    opacity:0; animation:fadeUp 0.8s ease forwards; animation-delay:1.5s; position:relative; z-index:2;
+  }
+  .intro-tap{
+    margin-top:2.6rem; font-size:0.75rem; color:var(--purple-bright);
+    opacity:0; animation:fadeUp 0.8s ease forwards; animation-delay:2.1s;
+    border:1px solid var(--line); padding:0.6rem 1.4rem; border-radius:999px; letter-spacing:0.08em; position:relative; z-index:2;
+  }
+  @keyframes fadeUp{ from{opacity:0; transform:translateY(10px);} to{opacity:1; transform:translateY(0);} }
+
+  /* ============ NAV ============ */
+  header{
+    position:sticky; top:0; z-index:100; display:flex; align-items:center; justify-content:space-between;
+    padding:1.1rem clamp(1.2rem, 5vw, 3.5rem); background:rgba(7,4,13,0.72); backdrop-filter:blur(14px);
+    border-bottom:1px solid var(--line);
+  }
+  .logo{ font-weight:700; font-size:1.15rem; letter-spacing:0.02em; background:var(--grad-brand); -webkit-background-clip:text; background-clip:text; color:transparent; }
+  nav{ display:flex; gap:clamp(0.8rem,2vw,2rem); }
+  nav a{ font-size:0.82rem; color:var(--text-muted); font-weight:600; letter-spacing:0.03em; transition:color 0.2s ease; position:relative; padding-bottom:4px; }
+  nav a::after{ content:''; position:absolute; left:0; bottom:-2px; width:0; height:1px; background:var(--grad-brand); transition:width 0.25s ease; }
+  nav a:hover, nav a.active{ color:var(--blue-pale); }
+  nav a:hover::after, nav a.active::after{ width:100%; }
+
+  /* ============ MARQUEE ============ */
+  .marquee{ position:relative; z-index:1; overflow:hidden; border-bottom:1px solid var(--line); background:rgba(139,92,246,0.05); padding:0.75rem 0; }
+  .marquee-track{ display:flex; width:max-content; animation:scrollMarquee 24s linear infinite; }
+  .marquee-track span{
+    display:inline-flex; align-items:center; gap:0.6rem; font-family:'JetBrains Mono', monospace; font-size:0.75rem;
+    letter-spacing:0.15em; text-transform:uppercase; color:var(--text-muted); padding:0 1.6rem; white-space:nowrap;
+  }
+  .marquee-track span::before{ content:'◆'; color:var(--blue-light); font-size:0.6rem; }
+  @keyframes scrollMarquee{ from{ transform:translateX(0); } to{ transform:translateX(-50%); } }
+
+  /* ============ HERO ============ */
+  .hero{
+    position:relative; z-index:1; max-width:1200px; margin:0 auto;
+    display:grid; grid-template-columns:1.1fr 0.9fr; align-items:center; gap:2rem;
+    padding:clamp(3rem,8vw,5rem) clamp(1.2rem,5vw,3.5rem) clamp(2rem,5vw,3rem);
+  }
+  .hero-copy{ text-align:left; }
+  .eyebrow{
+    display:inline-flex; align-items:center; gap:0.5rem; font-size:0.72rem; letter-spacing:0.28em; text-transform:uppercase;
+    color:var(--blue-pale); border:1px solid var(--line); padding:0.4rem 0.9rem; border-radius:999px; margin-bottom:1.6rem;
+  }
+  .eyebrow::before{ content:''; width:6px; height:6px; border-radius:50%; background:var(--blue-light); box-shadow:0 0 8px var(--blue-light); }
+  .hero h1{ font-size:clamp(2.2rem, 4.6vw, 3.6rem); font-weight:700; line-height:1.12; margin-bottom:1.2rem; }
+  .hero h1 em{ font-style:normal; background:var(--grad-brand); -webkit-background-clip:text; background-clip:text; color:transparent; }
+  .hero p{ color:var(--text-muted); font-size:1.02rem; max-width:460px; line-height:1.6; margin-bottom:1.8rem; }
+  .hero-actions{ display:flex; gap:0.8rem; flex-wrap:wrap; }
+  .btn-ghost{
+    display:inline-flex; align-items:center; gap:0.5rem; border:1px solid var(--line); padding:0.7rem 1.1rem;
+    border-radius:10px; font-size:0.85rem; font-weight:600; color:var(--text-main); transition:border-color 0.2s ease, background 0.2s ease;
+  }
+  .btn-ghost:hover{ border-color:var(--purple-bright); background:rgba(139,92,246,0.08); }
+
+  /* ---- Hero fan of swatches: the signature element ---- */
+  .hero-fan{
+    position:relative; height:340px; perspective:1100px;
+    display:flex; align-items:center; justify-content:center;
+  }
+  .fan-stage{
+    position:relative; width:220px; height:280px; transform-style:preserve-3d;
+    transition:transform 0.15s ease-out;
+  }
+  .fan-card{
+    position:absolute; top:0; left:0; width:150px; height:200px; top:40px; left:35px;
+    border-radius:14px; overflow:hidden; border:1px solid rgba(231,225,251,0.25);
+    box-shadow:0 20px 45px -18px rgba(0,0,0,0.65);
+    transform-origin:bottom center;
+    transition:transform 0.45s cubic-bezier(.2,.8,.2,1), box-shadow 0.3s ease, filter 0.3s ease;
+  }
+  .fan-card img{ width:100%; height:100%; object-fit:cover; }
+  .fan-card::after{ content:''; position:absolute; inset:0; background:linear-gradient(160deg, rgba(139,92,246,0.15), rgba(0,0,0,0.25)); }
+  .fan-card:nth-child(1){ transform:rotate(-22deg) translateX(-64px); z-index:1; }
+  .fan-card:nth-child(2){ transform:rotate(-11deg) translateX(-32px); z-index:2; }
+  .fan-card:nth-child(3){ transform:rotate(0deg) translateX(0); z-index:3; }
+  .fan-card:nth-child(4){ transform:rotate(11deg) translateX(32px); z-index:4; }
+  .fan-card:nth-child(5){ transform:rotate(22deg) translateX(64px); z-index:5; }
+  .hero-fan:hover .fan-card:nth-child(1){ transform:rotate(-30deg) translateX(-86px) translateY(-6px); }
+  .hero-fan:hover .fan-card:nth-child(2){ transform:rotate(-15deg) translateX(-42px) translateY(-10px); }
+  .hero-fan:hover .fan-card:nth-child(3){ transform:rotate(0deg) translateX(0) translateY(-16px); }
+  .hero-fan:hover .fan-card:nth-child(4){ transform:rotate(15deg) translateX(42px) translateY(-10px); }
+  .hero-fan:hover .fan-card:nth-child(5){ transform:rotate(30deg) translateX(86px) translateY(-6px); }
+  .fan-card:hover{ filter:brightness(1.15) saturate(1.15); box-shadow:0 26px 55px -16px rgba(139,92,246,0.6); z-index:9 !important; }
+  .fan-caption{
+    position:absolute; bottom:-30px; left:50%; transform:translateX(-50%);
+    font-family:'JetBrains Mono', monospace; font-size:0.68rem; letter-spacing:0.14em; text-transform:uppercase;
+    color:var(--text-muted); white-space:nowrap;
+  }
+
+  .scroll-cue{ margin:0 auto; width:22px; height:36px; border:1.5px solid var(--line); border-radius:12px; position:relative; }
+  .scroll-cue-wrap{ text-align:center; padding-bottom:1rem; position:relative; z-index:1; }
+  .scroll-cue::before{
+    content:''; position:absolute; top:6px; left:50%; width:3px; height:8px; background:var(--blue-light);
+    border-radius:2px; transform:translateX(-50%); animation:cueMove 1.8s ease-in-out infinite;
+  }
+  @keyframes cueMove{ 0%{ opacity:1; top:6px;} 70%{ opacity:0; top:18px;} 100%{ opacity:0; top:6px;} }
+
+  /* ============ SCROLL REVEAL: diagonal wipe ============ */
+  .reveal{
+    opacity:0; clip-path:polygon(0 0, 0 0, 0 100%, 0 100%);
+    transition:opacity 0.7s ease, clip-path 0.9s cubic-bezier(.16,.8,.2,1);
+  }
+  .reveal.in-view{ opacity:1; clip-path:polygon(0 0, 100% 0, 100% 100%, 0 100%); }
+  .reveal-stagger.in-view .stagger-item{ opacity:1; transform:translateY(0) rotate(var(--tilt,0deg)); }
+  .stagger-item{ opacity:0; transform:translateY(24px) rotate(var(--tilt,0deg)); transition:opacity 0.6s ease, transform 0.6s ease; }
+  .stagger-item:nth-child(1){ transition-delay:0.05s; }
+  .stagger-item:nth-child(2){ transition-delay:0.14s; }
+  .stagger-item:nth-child(3){ transition-delay:0.23s; }
+  .stagger-item:nth-child(4){ transition-delay:0.32s; }
+  .stagger-item:nth-child(5){ transition-delay:0.41s; }
+
+  /* ============ SECTION SHELL ============ */
+  section.block{ position:relative; z-index:1; max-width:1100px; margin:0 auto; padding:clamp(2.6rem,6vw,4rem) clamp(1.2rem,5vw,3.5rem); }
+  .block-head{ margin-bottom:2.2rem; }
+  .block-head .tag{ font-size:0.72rem; letter-spacing:0.3em; text-transform:uppercase; color:var(--blue-light); margin-bottom:0.6rem; display:flex; align-items:center; gap:0.6rem; }
+  .block-head .tag::before{ content:''; width:22px; height:1px; background:var(--blue-light); }
+  .block-head h2{ font-size:clamp(1.5rem,3.6vw,2.1rem); font-weight:700; }
+  .block-head p.lead{ color:var(--text-muted); margin-top:0.6rem; max-width:560px; }
+
+  /* ============ PREVIEW GALLERY ============ */
+  .gallery{ display:grid; grid-template-columns:repeat(5, 1fr); gap:0.9rem; }
+  .gallery figure{ position:relative; border-radius:14px; overflow:hidden; border:1px solid var(--line); aspect-ratio:3/4; background:var(--panel); transition:transform 0.35s ease, box-shadow 0.35s ease; }
+  .gallery figure:nth-child(odd){ --tilt:-2deg; }
+  .gallery figure:nth-child(even){ --tilt:2deg; }
+  .gallery img{ width:100%; height:100%; object-fit:cover; display:block; transition:transform 0.6s ease, filter 0.6s ease; filter:saturate(1.05); }
+  .gallery figure:hover{ transform:translateY(-6px) rotate(0deg); box-shadow:0 20px 40px -14px rgba(139,92,246,0.5); }
+  .gallery figure:hover img{ transform:scale(1.08); filter:saturate(1.25) brightness(1.05); }
+  .gallery figure::after{ content:''; position:absolute; inset:0; background:linear-gradient(to top, rgba(7,4,13,0.6), transparent 45%); pointer-events:none; }
+  .gallery figcaption{ position:absolute; bottom:0.6rem; left:0.7rem; z-index:2; font-size:0.65rem; letter-spacing:0.08em; text-transform:uppercase; color:var(--blue-pale); font-family:'JetBrains Mono', monospace; }
+  .gallery-note{ display:flex; align-items:center; gap:0.6rem; margin-top:1.2rem; font-size:0.8rem; color:var(--text-muted); border-left:2px solid var(--blue-light); padding-left:0.8rem; }
+
+  /* ============ PRICING ============ */
+  .grid-cards{ display:grid; grid-template-columns:repeat(3, 1fr); gap:1.1rem; }
+  .card{
+    background:linear-gradient(160deg, var(--panel), var(--panel-2)); border:1px solid var(--line); border-radius:18px;
+    padding:1.7rem 1.5rem; position:relative; overflow:hidden; display:flex; flex-direction:column; gap:1rem;
+    transition:box-shadow 0.3s ease; transform-style:preserve-3d; will-change:transform;
+  }
+  .card::before{
+    content:''; position:absolute; inset:0; border-radius:18px; padding:1px;
+    background:radial-gradient(220px circle at var(--mx,50%) var(--my,0%), rgba(179,155,255,0.55), transparent 60%);
+    -webkit-mask:linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    -webkit-mask-composite:xor; mask-composite:exclude; opacity:0; transition:opacity 0.3s ease; pointer-events:none;
+  }
+  .card:hover::before{ opacity:1; }
+  .card:hover{ box-shadow:0 24px 50px -18px rgba(139,92,246,0.55); }
+  .card h3{ font-size:1.05rem; font-weight:600; position:relative; z-index:1; }
+  .card .desc{ font-size:0.84rem; color:var(--text-muted); line-height:1.5; position:relative; z-index:1; }
+  .price-row{ display:flex; align-items:center; gap:0.6rem; position:relative; z-index:1; margin-top:auto; }
+  .case-icon{ width:22px; height:22px; flex-shrink:0; background:var(--grad-brand); clip-path:polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%); box-shadow:0 0 10px rgba(139,92,246,0.6); }
+  .price-text{ font-size:0.88rem; font-weight:600; color:var(--blue-pale); }
+  .price-text .mono{ color:var(--purple-bright); }
+  .send-note{ font-size:0.72rem; color:var(--text-muted); position:relative; z-index:1; border-top:1px dashed var(--line); padding-top:0.7rem; line-height:1.5; }
+  .send-note b{ color:var(--blue-pale); font-weight:600; }
+  .buy-btn{
+    position:relative; z-index:1; margin-top:0.3rem; overflow:hidden; display:inline-flex; align-items:center; justify-content:center; gap:0.5rem;
+    background:var(--grad-brand); color:#07040d; font-weight:700; font-size:0.85rem; padding:0.7rem 1rem; border-radius:10px;
+    transition:filter 0.2s ease, transform 0.2s ease;
+  }
+  .buy-btn:hover{ filter:brightness(1.14); transform:translateY(-1px); }
+  .buy-btn svg{ width:14px; height:14px; transition:transform 0.2s ease; }
+  .buy-btn:hover svg{ transform:translate(2px,-2px); }
+
+  /* ============ HOW IT WORKS ============ */
+  .steps{ display:grid; grid-template-columns:repeat(4,1fr); gap:1rem; }
+  .step{ border:1px solid var(--line); border-radius:16px; padding:1.5rem; background:rgba(255,255,255,0.02); position:relative; transition:border-color 0.3s ease, transform 0.3s ease; }
+  .step:hover{ border-color:rgba(179,155,255,0.5); transform:translateY(-3px); }
+  .step .num{ font-family:'JetBrains Mono', monospace; font-size:0.75rem; color:var(--blue-light); margin-bottom:0.7rem; display:block; }
+  .step h4{ font-size:0.98rem; margin-bottom:0.5rem; font-weight:600; }
+  .step p{ font-size:0.83rem; color:var(--text-muted); line-height:1.55; }
+  .step.highlight{ border-color:rgba(125,211,252,0.4); background:linear-gradient(160deg, rgba(139,92,246,0.1), rgba(125,211,252,0.06)); }
+
+  .discord-cta{
+    margin-top:2rem; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:1rem;
+    border:1px solid var(--line); border-radius:18px; padding:1.6rem 1.8rem;
+    background:linear-gradient(160deg, var(--panel), var(--panel-2)); position:relative; overflow:hidden;
+  }
+  .discord-cta::before{ content:''; position:absolute; top:-50%; left:-10%; width:50%; height:200%; background:radial-gradient(circle, rgba(139,92,246,0.22), transparent 70%); }
+  .discord-cta div{ position:relative; z-index:1; }
+  .discord-cta div h3{ font-size:1.1rem; margin-bottom:0.35rem; }
+  .discord-cta div p{ font-size:0.85rem; color:var(--text-muted); }
+  .discord-cta .buy-btn{ position:relative; z-index:1; }
+
+  /* ============ FOOTER ============ */
+  footer{ position:relative; z-index:1; text-align:center; padding:2.5rem 1.5rem 3rem; color:var(--text-muted); font-size:0.78rem; border-top:1px solid var(--line); margin-top:1rem; }
+  footer .logo{ display:block; margin-bottom:0.6rem; font-size:1rem; }
+
+  /* ============ RESPONSIVE ============ */
+  @media (max-width:960px){
+    .hero{ grid-template-columns:1fr; text-align:center; }
+    .hero-copy{ text-align:center; }
+    .hero p{ margin-left:auto; margin-right:auto; }
+    .hero-actions{ justify-content:center; }
+    .hero-fan{ order:-1; height:280px; }
+  }
+  @media (max-width:860px){
+    .gallery{ grid-template-columns:repeat(2, 1fr); }
+    .grid-cards{ grid-template-columns:1fr; }
+    .steps{ grid-template-columns:1fr; }
+    nav{ display:none; }
+    .cursor-glow{ display:none; }
+  }
+  @media (prefers-reduced-motion: reduce){
+    .intro-title span, .intro-sub, .intro-tap, .intro-sweep, .bg-glow span, .scroll-cue::before{ animation:none !important; opacity:1 !important; transform:none !important; }
+    .reveal, .stagger-item{ opacity:1 !important; clip-path:none !important; transform:none !important; transition:none !important; }
+  }
+  :focus-visible{ outline:2px solid var(--blue-light); outline-offset:2px; }
+</style>
+</head>
+<body class="locked">
+
+<div id="progress"></div>
+<div class="grain"></div>
+<div class="cursor-glow" id="cursorGlow"></div>
+
+<div id="intro">
+  <div class="intro-grid"></div>
+  <div class="intro-sweep"></div>
+  <h1 class="intro-title" id="introTitle"></h1>
+  <p class="intro-sub">textures &middot; sky &middot; rivals coaching</p>
+  <p class="intro-tap">click or wait to enter</p>
+</div>
+
+<div class="bg-glow"><span></span><span></span><span></span></div>
+<div class="noise-grid"></div>
+
+<header>
+  <div class="logo">TemTextures</div>
+  <nav>
+    <a href="#preview">Preview</a>
+    <a href="#textures">Textures</a>
+    <a href="#coaching">Coaching</a>
+    <a href="#coaching-textures">Coaching Textures</a>
+    <a href="#how">How it works</a>
+  </nav>
+</header>
+
+<div class="marquee">
+  <div class="marquee-track">
+    <span>Custom Textures</span><span>Matching Skies</span><span>Rivals Coaching</span><span>Paid in Skin Cases</span><span>Made by Tem</span>
+    <span>Custom Textures</span><span>Matching Skies</span><span>Rivals Coaching</span><span>Paid in Skin Cases</span><span>Made by Tem</span>
+  </div>
+</div>
+
+<section class="hero">
+  <div class="hero-copy">
+    <span class="eyebrow reveal">Roblox Rivals &middot; Skin Cases &amp; Prop Bundles</span>
+    <h1 class="reveal">Clean textures, coaching that <em>makes the difference</em>.</h1>
+    <p class="reveal">Custom textures, matching skies, and Rivals coaching — paid in skin cases or a prop bundle, straight in-game. Tell Tem what you want, and he builds it around your idea.</p>
+    <div class="hero-actions reveal">
+      <a class="buy-btn" href="https://discord.com/users/1523748008712339508" target="_blank" rel="noopener">
+        Buy via Discord
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M7 17L17 7M9 7h8v8"/></svg>
+      </a>
+      <a class="btn-ghost" href="#preview">See the work</a>
+    </div>
+  </div>
+
+  <div class="hero-fan" id="heroFan">
+    <div class="fan-stage" id="fanStage">
+      <div class="fan-card"><img src="https://cdn.discordapp.com/attachments/1537927578382499840/1539379362506346678/IMG_4006.jpg?ex=6a861a40&is=6a84c8c0&hm=776bb4f1aca1d2c480bb3ce16e5a00324e91550d57291cac9bd303ea34c2382c&" alt="Texture swatch 1"></div>
+      <div class="fan-card"><img src="https://cdn.discordapp.com/attachments/1537927578382499840/1539379362111946772/IMG_4005.jpg?ex=6a861a40&is=6a84c8c0&hm=4ed38f6e6f8109212190db4efb817a0b095acca482f959f7be3e2cc5f90aaf4f&" alt="Texture swatch 2"></div>
+      <div class="fan-card"><img src="https://cdn.discordapp.com/attachments/1537927578382499840/1539379362900746420/content.png?ex=6a861a40&is=6a84c8c0&hm=7da4f6a09150d78cbe94bb4d5f928b16f4453a364f40b37cf0c86ac96d5a79c9&" alt="Texture swatch 3"></div>
+      <div class="fan-card"><img src="https://cdn.discordapp.com/attachments/1537927578382499840/1539379361676001370/IMG_4112.jpg?ex=6a861a40&is=6a84c8c0&hm=85e366b223823bd94b488719608b394fed88d5d3f1501a11e2935a6911dcda84&" alt="Texture swatch 4"></div>
+      <div class="fan-card"><img src="https://cdn.discordapp.com/attachments/1537927578382499840/1539379361193664632/IMG_4118.jpg?ex=6a861a3f&is=6a84c8bf&hm=abf6ba7b802f87d1748b71f17bd62167e7bc564f771aebc735de520e9ef8f4ed&" alt="Texture swatch 5"></div>
+      <span class="fan-caption">hover to spread</span>
+    </div>
+  </div>
+</section>
+
+<div class="scroll-cue-wrap"><div class="scroll-cue"></div></div>
+
+<div class="cut">
+  <svg viewBox="0 0 1200 46" preserveAspectRatio="none"><polygon points="0,0 1200,26 1200,46 0,46" fill="rgba(139,92,246,0.10)"/><polygon points="0,10 1200,32 1200,34 0,12" fill="rgba(125,211,252,0.4)"/></svg>
+</div>
+
+<section class="block reveal" id="preview">
+  <div class="block-head">
+    <span class="tag">Preview</span>
+    <h2>A look at Tem's style</h2>
+    <p class="lead">These show the kind of textures Tem creates — not a fixed product. Every order is built around what you send.</p>
+  </div>
+  <div class="gallery reveal-stagger">
+    <figure class="stagger-item"><img src="https://cdn.discordapp.com/attachments/1537927578382499840/1539379362900746420/content.png?ex=6a861a40&is=6a84c8c0&hm=7da4f6a09150d78cbe94bb4d5f928b16f4453a364f40b37cf0c86ac96d5a79c9&" alt="Texture style example 1" loading="lazy"><figcaption>Style 01</figcaption></figure>
+    <figure class="stagger-item"><img src="https://cdn.discordapp.com/attachments/1537927578382499840/1539379362506346678/IMG_4006.jpg?ex=6a861a40&is=6a84c8c0&hm=776bb4f1aca1d2c480bb3ce16e5a00324e91550d57291cac9bd303ea34c2382c&" alt="Texture style example 2" loading="lazy"><figcaption>Style 02</figcaption></figure>
+    <figure class="stagger-item"><img src="https://cdn.discordapp.com/attachments/1537927578382499840/1539379362111946772/IMG_4005.jpg?ex=6a861a40&is=6a84c8c0&hm=4ed38f6e6f8109212190db4efb817a0b095acca482f959f7be3e2cc5f90aaf4f&" alt="Texture style example 3" loading="lazy"><figcaption>Style 03</figcaption></figure>
+    <figure class="stagger-item"><img src="https://cdn.discordapp.com/attachments/1537927578382499840/1539379361676001370/IMG_4112.jpg?ex=6a861a40&is=6a84c8c0&hm=85e366b223823bd94b488719608b394fed88d5d3f1501a11e2935a6911dcda84&" alt="Texture style example 4" loading="lazy"><figcaption>Style 04</figcaption></figure>
+    <figure class="stagger-item"><img src="https://cdn.discordapp.com/attachments/1537927578382499840/1539379361193664632/IMG_4118.jpg?ex=6a861a3f&is=6a84c8bf&hm=abf6ba7b802f87d1748b71f17bd62167e7bc564f771aebc735de520e9ef8f4ed&" alt="Texture style example 5" loading="lazy"><figcaption>Style 05</figcaption></figure>
+  </div>
+  <p class="gallery-note">These are style examples only. After you order, you'll send Tem a short description or a reference image of what you actually want, and he'll build it for you.</p>
+</section>
+
+<div class="cut flip">
+  <svg viewBox="0 0 1200 46" preserveAspectRatio="none"><polygon points="0,0 1200,26 1200,46 0,46" fill="rgba(139,92,246,0.10)"/><polygon points="0,10 1200,32 1200,34 0,12" fill="rgba(125,211,252,0.4)"/></svg>
+</div>
+
+<section class="block reveal" id="textures">
+  <div class="block-head">
+    <span class="tag">Shop</span>
+    <h2>Textures</h2>
+    <p class="lead">Individual textures, with or without a matching sky, or the full pack.</p>
+  </div>
+  <div class="grid-cards reveal-stagger">
+
+    <div class="card stagger-item">
+      <h3>Normal Textures</h3>
+      <p class="desc">A custom texture, built around your reference and delivered clean and ready to use.</p>
+      <div class="price-row"><span class="case-icon"></span><span class="price-text">Price: <span class="mono">1 skin case</span></span></div>
+      <div class="send-note">Send to Tem on Rivals: <b>1 skin case</b><br>Then send: <b>a text description or reference image</b> of what you want.</div>
+      <a class="buy-btn" href="https://discord.com/users/1523748008712339508" target="_blank" rel="noopener">
+        Buy via Discord
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M7 17L17 7M9 7h8v8"/></svg>
+      </a>
+    </div>
+
+    <div class="card stagger-item">
+      <h3>Textures &amp; Sky</h3>
+      <p class="desc">The texture paired with a matching sky for a complete look, built to your reference.</p>
+      <div class="price-row"><span class="case-icon"></span><span class="price-text">Price: <span class="mono">2 skin cases</span></span></div>
+      <div class="send-note">Send to Tem on Rivals: <b>2 skin cases</b><br>Then send: <b>a text description or reference image</b> of what you want.</div>
+      <a class="buy-btn" href="https://discord.com/users/1523748008712339508" target="_blank" rel="noopener">
+        Buy via Discord
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M7 17L17 7M9 7h8v8"/></svg>
+      </a>
+    </div>
+
+    <div class="card stagger-item">
+      <h3>Whole Texture Pack</h3>
+      <p class="desc">The full pack: every texture plus the sky, in one delivery, built to your reference.</p>
+      <div class="price-row"><span class="case-icon"></span><span class="price-text">Price: <span class="mono">4 skin cases</span></span></div>
+      <div class="send-note">Send to Tem on Rivals: <b>4 skin cases</b><br>Then send: <b>a text description or reference image</b> of what you want.</div>
+      <a class="buy-btn" href="https://discord.com/users/1523748008712339508" target="_blank" rel="noopener">
+        Buy via Discord
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M7 17L17 7M9 7h8v8"/></svg>
+      </a>
+    </div>
+
+  </div>
+</section>
+
+<div class="cut">
+  <svg viewBox="0 0 1200 46" preserveAspectRatio="none"><polygon points="0,0 1200,26 1200,46 0,46" fill="rgba(139,92,246,0.10)"/><polygon points="0,10 1200,32 1200,34 0,12" fill="rgba(125,211,252,0.4)"/></svg>
+</div>
+
+<section class="block reveal" id="coaching">
+  <div class="block-head">
+    <span class="tag">Roblox Rivals</span>
+    <h2>Coaching</h2>
+    <p class="lead">In-game coaching sessions to help you improve on Rivals.</p>
+  </div>
+  <div class="grid-cards reveal-stagger">
+
+    <div class="card stagger-item">
+      <h3>30 min coaching</h3>
+      <p class="desc">A half-hour of one-on-one coaching on Rivals.</p>
+      <div class="price-row"><span class="case-icon"></span><span class="price-text">Price: <span class="mono">2 skin cases</span></span></div>
+      <div class="send-note">Send to Tem on Rivals: <b>2 skin cases</b></div>
+      <a class="buy-btn" href="https://discord.com/users/1523748008712339508" target="_blank" rel="noopener">
+        Buy via Discord
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M7 17L17 7M9 7h8v8"/></svg>
+      </a>
+    </div>
+
+    <div class="card stagger-item">
+      <h3>1h coaching</h3>
+      <p class="desc">A full hour of one-on-one coaching on Rivals.</p>
+      <div class="price-row"><span class="case-icon"></span><span class="price-text">Price: <span class="mono">1 prop bundle</span></span></div>
+      <div class="send-note">Send to Tem on Rivals: <b>1 prop bundle</b></div>
+      <a class="buy-btn" href="https://discord.com/users/1523748008712339508" target="_blank" rel="noopener">
+        Buy via Discord
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M7 17L17 7M9 7h8v8"/></svg>
+      </a>
+    </div>
+
+  </div>
+</section>
+
+<div class="cut flip">
+  <svg viewBox="0 0 1200 46" preserveAspectRatio="none"><polygon points="0,0 1200,26 1200,46 0,46" fill="rgba(139,92,246,0.10)"/><polygon points="0,10 1200,32 1200,34 0,12" fill="rgba(125,211,252,0.4)"/></svg>
+</div>
+
+<section class="block reveal" id="coaching-textures">
+  <div class="block-head">
+    <span class="tag">Tutorials</span>
+    <h2>Coaching Textures</h2>
+    <p class="lead">Learn how to make your own textures, step by step.</p>
+  </div>
+  <div class="grid-cards reveal-stagger">
+
+    <div class="card stagger-item">
+      <h3>Textures Tut</h3>
+      <p class="desc">A tutorial covering how to build a texture from scratch.</p>
+      <div class="price-row"><span class="case-icon"></span><span class="price-text">Price: <span class="mono">1 skin case</span></span></div>
+      <div class="send-note">Send to Tem on Rivals: <b>1 skin case</b></div>
+      <a class="buy-btn" href="https://discord.com/users/1523748008712339508" target="_blank" rel="noopener">
+        Buy via Discord
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M7 17L17 7M9 7h8v8"/></svg>
+      </a>
+    </div>
+
+    <div class="card stagger-item">
+      <h3>Textures &amp; Sky Tut</h3>
+      <p class="desc">Textures + matching sky tutorial, full method covered.</p>
+      <div class="price-row"><span class="case-icon"></span><span class="price-text">Price: <span class="mono">2 skin cases</span></span></div>
+      <div class="send-note">Send to Tem on Rivals: <b>2 skin cases</b></div>
+      <a class="buy-btn" href="https://discord.com/users/1523748008712339508" target="_blank" rel="noopener">
+        Buy via Discord
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M7 17L17 7M9 7h8v8"/></svg>
+      </a>
+    </div>
+
+    <div class="card stagger-item">
+      <h3>Whole Texture Pack Tut</h3>
+      <p class="desc">The full tutorial: every technique, texture, and sky covered.</p>
+      <div class="price-row"><span class="case-icon"></span><span class="price-text">Price: <span class="mono">3 skin cases</span></span></div>
+      <div class="send-note">Send to Tem on Rivals: <b>3 skin cases</b></div>
+      <a class="buy-btn" href="https://discord.com/users/1523748008712339508" target="_blank" rel="noopener">
+        Buy via Discord
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M7 17L17 7M9 7h8v8"/></svg>
+      </a>
+    </div>
+
+  </div>
+</section>
+
+<div class="cut">
+  <svg viewBox="0 0 1200 46" preserveAspectRatio="none"><polygon points="0,0 1200,26 1200,46 0,46" fill="rgba(139,92,246,0.10)"/><polygon points="0,10 1200,32 1200,34 0,12" fill="rgba(125,211,252,0.4)"/></svg>
+</div>
+
+<section class="block reveal" id="how">
+  <div class="block-head">
+    <span class="tag">Process</span>
+    <h2>How it works</h2>
+    <p class="lead">Four simple steps between the order and delivery.</p>
+  </div>
+  <div class="steps reveal-stagger">
+    <div class="step stagger-item">
+      <span class="num">01</span>
+      <h4>Pick your order</h4>
+      <p>Find the card you want and note what needs to be sent (skin case(s) or a prop bundle).</p>
+    </div>
+    <div class="step stagger-item">
+      <span class="num">02</span>
+      <h4>DM Tem on Discord</h4>
+      <p>Click "Buy via Discord," then send Tem a message with your Roblox username.</p>
+    </div>
+    <div class="step stagger-item">
+      <span class="num">03</span>
+      <h4>Send the item on Rivals</h4>
+      <p>On Roblox Rivals, send Tem exactly what's listed under the order you picked.</p>
+    </div>
+    <div class="step stagger-item highlight">
+      <span class="num">04</span>
+      <h4>Send your reference</h4>
+      <p>Send Tem a short text description or an image showing how you want it to look, so he can create it for you.</p>
+    </div>
+  </div>
+
+  <div class="discord-cta reveal">
+    <div>
+      <h3>Ready to order?</h3>
+      <p>Send Tem a DM on Discord to get started.</p>
+    </div>
+    <a class="buy-btn" href="https://discord.com/users/1523748008712339508" target="_blank" rel="noopener">
+      Open Discord
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M7 17L17 7M9 7h8v8"/></svg>
+    </a>
+  </div>
+</section>
+
+<footer>
+  <span class="logo">TemTextures</span>
+  Textures &middot; Sky &middot; Rivals Coaching — paid in skin cases &amp; prop bundles.
+</footer>
+
+<script>
+  // Intro letter animation
+  const word = "TemTextures";
+  const titleEl = document.getElementById('introTitle');
+  word.split('').forEach((ch, i) => {
+    const span = document.createElement('span');
+    span.textContent = ch;
+    span.style.animationDelay = (0.15 + i * 0.06) + 's';
+    titleEl.appendChild(span);
+  });
+
+  const intro = document.getElementById('intro');
+  const shapePositions = [
+    {top:'18%', left:'12%'}, {top:'70%', left:'18%'}, {top:'22%', left:'85%'},
+    {top:'75%', left:'82%'}, {top:'50%', left:'6%'}, {top:'48%', left:'93%'}
+  ];
+  shapePositions.forEach((pos, i) => {
+    const s = document.createElement('div');
+    s.className = 'intro-shape';
+    s.style.top = pos.top; s.style.left = pos.left;
+    s.style.animationDelay = (0.3 + i * 0.15) + 's, ' + (i * 0.4) + 's';
+    intro.appendChild(s);
+  });
+
+  function closeIntro(){
+    if (intro.classList.contains('hide')) return;
+    intro.classList.add('hide');
+    document.body.classList.remove('locked');
+  }
+  intro.addEventListener('click', closeIntro);
+  setTimeout(closeIntro, 3400);
+
+  // Scroll progress bar
+  const progress = document.getElementById('progress');
+  function updateProgress(){
+    const h = document.documentElement;
+    const scrolled = (h.scrollTop) / (h.scrollHeight - h.clientHeight) * 100;
+    progress.style.width = scrolled + '%';
+  }
+  window.addEventListener('scroll', updateProgress, { passive:true });
+
+  // Scroll reveal via IntersectionObserver
+  const revealEls = document.querySelectorAll('.reveal, .reveal-stagger');
+  const io = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting){
+        entry.target.classList.add('in-view');
+        io.unobserve(entry.target);
+      }
+    });
+  }, { threshold: 0.15, rootMargin: '0px 0px -60px 0px' });
+  revealEls.forEach(el => io.observe(el));
+
+  // Scrollspy nav
+  const navLinks = document.querySelectorAll('nav a');
+  const sections = Array.from(navLinks).map(a => document.querySelector(a.getAttribute('href'))).filter(Boolean);
+  const spy = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      const id = '#' + entry.target.id;
+      const link = document.querySelector('nav a[href="' + id + '"]');
+      if (!link) return;
+      if (entry.isIntersecting) navLinks.forEach(l => l.classList.remove('active')), link.classList.add('active');
+    });
+  }, { rootMargin: '-45% 0px -45% 0px' });
+  sections.forEach(s => spy.observe(s));
+
+  // Card 3D tilt + spotlight
+  document.querySelectorAll('.card').forEach(card => {
+    card.addEventListener('mousemove', (e) => {
+      const rect = card.getBoundingClientRect();
+      const px = (e.clientX - rect.left) / rect.width;
+      const py = (e.clientY - rect.top) / rect.height;
+      card.style.setProperty('--mx', (px * 100) + '%');
+      card.style.setProperty('--my', (py * 100) + '%');
+      const rotY = (px - 0.5) * 10;
+      const rotX = (0.5 - py) * 8;
+      card.style.transform = 'perspective(800px) rotateX(' + rotX + 'deg) rotateY(' + rotY + 'deg) translateY(-4px)';
+    });
+    card.addEventListener('mouseleave', () => { card.style.transform = ''; });
+  });
+
+  // Hero fan parallax tilt
+  const heroFan = document.getElementById('heroFan');
+  const fanStage = document.getElementById('fanStage');
+  if (heroFan && fanStage){
+    heroFan.addEventListener('mousemove', (e) => {
+      const rect = heroFan.getBoundingClientRect();
+      const px = (e.clientX - rect.left) / rect.width - 0.5;
+      const py = (e.clientY - rect.top) / rect.height - 0.5;
+      fanStage.style.transform = 'rotateY(' + (px * 16) + 'deg) rotateX(' + (-py * 12) + 'deg)';
+    });
+    heroFan.addEventListener('mouseleave', () => { fanStage.style.transform = ''; });
+  }
+
+  // Cursor ambient glow (desktop only, smoothed)
+  const glow = document.getElementById('cursorGlow');
+  let gx = window.innerWidth/2, gy = window.innerHeight/2, tx = gx, ty = gy;
+  let glowActive = false;
+  window.addEventListener('mousemove', (e) => {
+    tx = e.clientX; ty = e.clientY;
+    if (!glowActive){ glow.style.opacity = '1'; glowActive = true; }
+  });
+  function loopGlow(){
+    gx += (tx - gx) * 0.12; gy += (ty - gy) * 0.12;
+    glow.style.transform = 'translate(' + gx + 'px,' + gy + 'px) translate(-50%,-50%)';
+    requestAnimationFrame(loopGlow);
+  }
+  if (window.matchMedia('(hover: hover)').matches) loopGlow();
+</script>
+
+</body>
+</html>
